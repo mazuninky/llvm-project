@@ -19,6 +19,7 @@
 #include "tsan_report.h"
 #include "tsan_symbolize.h"
 #include "tsan_platform.h"
+#include "tsan_rtl_dd_impoved.h"
 
 namespace __tsan {
 
@@ -79,6 +80,7 @@ void MutexCreate(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
 
 void MutexDestroy(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
   DPrintf("#%d: MutexDestroy %zx\n", thr->tid, addr);
+  __dd::PerformDestroy(addr);
   StatInc(thr, StatMutexDestroy);
   SyncVar *s = ctx->metamap.GetIfExistsAndLock(addr, true);
   if (s == 0)
@@ -141,6 +143,7 @@ void MutexDestroy(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
 
 void MutexPreLock(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
   DPrintf("#%d: MutexPreLock %zx flagz=0x%x\n", thr->tid, addr, flagz);
+  __dd::PerformBeforeLock(thr->tid, addr);
   if (!(flagz & MutexFlagTryLock) && common_flags()->detect_deadlocks) {
     SyncVar *s = ctx->metamap.GetOrCreateAndLock(thr, pc, addr, false);
     s->UpdateFlags(flagz);
@@ -158,6 +161,7 @@ void MutexPreLock(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
 void MutexPostLock(ThreadState *thr, uptr pc, uptr addr, u32 flagz, int rec) {
   DPrintf("#%d: MutexPostLock %zx flag=0x%x rec=%d\n",
       thr->tid, addr, flagz, rec);
+  __dd::PerformAfterLock(thr->tid, addr);
   if (flagz & MutexFlagRecursiveLock)
     CHECK_GT(rec, 0);
   else
@@ -212,6 +216,7 @@ void MutexPostLock(ThreadState *thr, uptr pc, uptr addr, u32 flagz, int rec) {
 
 int MutexUnlock(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
   DPrintf("#%d: MutexUnlock %zx flagz=0x%x\n", thr->tid, addr, flagz);
+  __dd::PerformUnlock(thr->tid, addr);
   if (IsAppMem(addr))
     MemoryReadAtomic(thr, pc, addr, kSizeLog1);
   SyncVar *s = ctx->metamap.GetOrCreateAndLock(thr, pc, addr, true);

@@ -7,3 +7,5 @@ multi_arch
 
 .idea
 cmake-build-debug
+build
+__build
