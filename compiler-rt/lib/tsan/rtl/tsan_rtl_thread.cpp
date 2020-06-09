@@ -16,6 +16,7 @@
 #include "tsan_platform.h"
 #include "tsan_report.h"
 #include "tsan_sync.h"
+#include "tsan_rtl_dd_impoved.h"
 
 namespace __tsan {
 
@@ -50,6 +51,7 @@ struct OnCreatedArgs {
 };
 
 void ThreadContext::OnCreated(void *arg) {
+    __dd::PerformCreateThread(tid);
   thr = 0;
   if (tid == 0)
     return;
@@ -125,6 +127,7 @@ void ThreadContext::OnStarted(void *arg) {
 }
 
 void ThreadContext::OnFinished() {
+    __dd::PerformDestroyThread(tid);
 #if SANITIZER_GO
   internal_free(thr->shadow_stack);
   thr->shadow_stack = nullptr;

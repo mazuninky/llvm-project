@@ -65,6 +65,7 @@ static void ReportMutexMisuse(ThreadState *thr, uptr pc, ReportType typ,
 void MutexCreate(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
   DPrintf("#%d: MutexCreate %zx flagz=0x%x\n", thr->tid, addr, flagz);
   StatInc(thr, StatMutexCreate);
+  __dd::PerformCreateMutex(addr);
   if (!(flagz & MutexFlagLinkerInit) && IsAppMem(addr)) {
     CHECK(!thr->is_freeing);
     thr->is_freeing = true;
@@ -80,7 +81,7 @@ void MutexCreate(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
 
 void MutexDestroy(ThreadState *thr, uptr pc, uptr addr, u32 flagz) {
   DPrintf("#%d: MutexDestroy %zx\n", thr->tid, addr);
-  __dd::PerformDestroy(addr);
+  __dd::PerformDestroyMutex(addr);
   StatInc(thr, StatMutexDestroy);
   SyncVar *s = ctx->metamap.GetIfExistsAndLock(addr, true);
   if (s == 0)
